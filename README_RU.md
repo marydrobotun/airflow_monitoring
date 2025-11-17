@@ -1,1 +1,31 @@
-# Введение
+# Содержание
+- [1. Введение](#1-введение)
+  - [1.1 О проекте](#11-о-проекте)
+  - [1.2 Используемые технологии](#12-используемые-технологии)
+## 1. Введение
+### 1.1 О проекте
+Данный проект представляет собой кластер Apache Airflow с комплексной системой мониторинга на базе GAP-стека.
+Проект обеспечивает:
+- Отказоустойчивый кластер Airflow с горизонтальным масштабированием
+- Сквозной мониторинг всех компонентов системы
+- Централизованный сбор логов и метрик
+- Оповещение о проблемах
+- Визуализацию ключевых показателей эффективности
+### 1.2 Используемые технологии
+#### 🚀Ключевые системы
+- [Apache Airflow 3.1.3](https://airflow.apache.org/docs/apache-airflow/3.1.3/index.html)
+- [Postgres 18](https://www.postgresql.org/docs/18/index.html)
+- [Redis 7.2](https://redis.io/docs/latest/develop/whats-new/7-2/)
+- [Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html)
+#### 📊 Мониторинг и Observability
+- [Prometheus](https://prometheus.io/docs/introduction/overview/)
+- Экспортеры для Prometheus
+	- [statsd exporter](https://github.com/prometheus/statsd_exporter?ysclid=mi2vxodqpf671698836)
+	- [node exporter](https://github.com/prometheus/node_exporter?ysclid=mi2w0yjrnu146098759)
+	- [postgres exporter](https://github.com/prometheus-community/postgres_exporter?ysclid=mi2w2ia3hs86328693)
+- [Grafana](https://grafana.com/docs/)
+- [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)
+#### 🐳 Инфраструктура
+- [Docker]()
+- [Docker Compose]()
+  
