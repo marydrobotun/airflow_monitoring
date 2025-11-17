@@ -1,0 +1,20 @@
+groups:
+- name: node.rules
+  rules:
+  - alert: NodeDown
+    expr: up == 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Node is down"
+      description: "Prometheus cannot scrape node-exporter on {{ $labels.instance }} for more than 2 minutes."
+
+  - alert: HighCPU
+    expr: 100 * (1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage"
+      description: "CPU usage > 85% for more than 5 minutes."

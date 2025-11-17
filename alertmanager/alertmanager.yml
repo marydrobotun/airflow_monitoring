@@ -1,0 +1,16 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+  receiver: 'telegram'
+
+receivers:
+  - name: 'Telegram'
+    telegram_configs:
+      - bot_token: 'TOKEN'
+        chat_id: -100123456789
+        send_resolved: true
