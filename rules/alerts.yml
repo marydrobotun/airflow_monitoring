@@ -1,8 +1,9 @@
 groups:
 - name: node.rules
   rules:
+# NODE EXPORTER  
   - alert: NodeDown
-    expr: up == 0
+    expr: up{job="node"} == 0
     for: 2m
     labels:
       severity: critical
@@ -10,11 +11,225 @@ groups:
       summary: "Node is down"
       description: "Prometheus cannot scrape node-exporter on {{ $labels.instance }} for more than 2 minutes."
 
-  - alert: HighCPU
-    expr: 100 * (1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) > 85
+  - alert: HighCPUUsage
+    expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
     for: 5m
     labels:
       severity: warning
+      category: cpu
     annotations:
-      summary: "High CPU usage"
-      description: "CPU usage > 85% for more than 5 minutes."
+      summary: "High CPU usage on {{ $labels.instance }}"
+      description: "CPU usage is at {{ $value | humanizePercentage }} for more than 5 minutes"
+
+  - alert: CriticalCPUUsage
+    expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+    for: 2m
+    labels:
+      severity: critical
+      category: cpu
+    annotations:
+      summary: "CRITICAL: CPU usage on {{ $labels.instance }}"
+      description: "CPU usage is at {{ $value | humanizePercentage }} for more than 2 minutes"
+
+
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / (node_memory_MemTotal_bytes))) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+      category: memory
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }}"
+      description: "Memory usage is at {{ $value | humanizePercentage }} for more than 5 minutes"
+
+  - alert: CriticalMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / (node_memory_MemTotal_bytes))) * 100 > 95
+    for: 2m
+    labels:
+      severity: critical
+      category: memory
+    annotations:
+      summary: "CRITICAL: Memory usage on {{ $labels.instance }}"
+      description: "Memory usage is at {{ $value | humanizePercentage }} for more than 2 minutes"
+
+  - alert: HighDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+      category: disk
+    annotations:
+      summary: "High disk usage on {{ $labels.instance }} - {{ $labels.mountpoint }}"
+      description: "Disk usage on {{ $labels.mountpoint }} is at {{ $value | humanizePercentage }}"
+
+  - alert: CriticalDiskUsage
+    expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 95
+    for: 2m
+    labels:
+      severity: critical
+      category: disk
+    annotations:
+      summary: "CRITICAL: Disk usage on {{ $labels.instance }} - {{ $labels.mountpoint }}"
+      description: "Disk usage on {{ $labels.mountpoint }} is at {{ $value | humanizePercentage }}"
+
+  - alert: DiskWillFillIn4Hours
+    expr: predict_linear(node_filesystem_avail_bytes{fstype!="tmpfs"}[1h], 4 * 3600) < 0
+    for: 2m
+    labels:
+      severity: critical
+      category: disk
+    annotations:
+      summary: "Disk will fill in 4 hours on {{ $labels.instance }} - {{ $labels.mountpoint }}"
+      description: "Based on current usage trends, disk {{ $labels.mountpoint }} will be full in 4 hours"
+
+  - alert: HighDiskIO
+    expr: rate(node_disk_io_time_seconds_total[1m]) * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+      category: disk
+    annotations:
+      summary: "High Disk I/O on {{ $labels.instance }} - {{ $labels.device }}"
+      description: "Disk I/O utilization is at {{ $value | humanizePercentage }}"
+
+  - alert: HighNetworkErrors
+    expr: rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]) > 10
+    for: 5m
+    labels:
+      severity: warning
+      category: network
+    annotations:
+      summary: "High network errors on {{ $labels.instance }} - {{ $labels.device }}"
+      description: "Network interface {{ $labels.device }} has high error rate"
+
+  - alert: HighNetworkUtilization
+    expr: (rate(node_network_receive_bytes_total[5m]) + rate(node_network_transmit_bytes_total[5m])) / 125000 > 80
+    for: 5m
+    labels:
+      severity: warning
+      category: network
+    annotations:
+      summary: "High network utilization on {{ $labels.instance }} - {{ $labels.device }}"
+      description: "Network utilization is at {{ $value | humanizePercentage }} (80 Mbps+)"
+
+  - alert: HighSystemLoad
+    expr: node_load5 / count without (mode, cpu) (node_cpu_seconds_total{mode="system"}) > 2
+    for: 5m
+    labels:
+      severity: warning
+      category: load
+    annotations:
+      summary: "High system load on {{ $labels.instance }}"
+      description: "5-minute load average is {{ $value }} times the number of cores"
+
+  - alert: CriticalSystemLoad
+    expr: node_load5 / count without (mode, cpu) (node_cpu_seconds_total{mode="system"}) > 4
+    for: 2m
+    labels:
+      severity: critical
+      category: load
+    annotations:
+      summary: "CRITICAL: System load on {{ $labels.instance }}"
+      description: "5-minute load average is {{ $value }} times the number of cores"
+
+  - alert: HardwareErrors
+    expr: increase(node_edac_uncorrectable_errors_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+      category: hardware
+    annotations:
+      summary: "Hardware errors detected on {{ $labels.instance }}"
+      description: "Uncorrectable memory errors detected"
+
+  - alert: HighTemperature
+    expr: node_hwmon_temp_celsius > 80
+    for: 5m
+    labels:
+      severity: warning
+      category: temperature
+    annotations:
+      summary: "High temperature on {{ $labels.instance }}"
+      description: "Temperature sensor {{ $labels.sensor }} is at {{ $value }}°C"
+
+  - alert: CriticalTemperature
+    expr: node_hwmon_temp_celsius > 90
+    for: 2m
+    labels:
+      severity: critical
+      category: temperature
+    annotations:
+      summary: "CRITICAL: Temperature on {{ $labels.instance }}"
+      description: "Temperature sensor {{ $labels.sensor }} is at {{ $value }}°C"
+
+# POSTGRES EXPORTER
+  - alert: PostgresTooManyConnections
+    expr: pg_stat_activity_count{datname!~"template.*|postgres"} / pg_settings_max_connections * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+      category: connections
+    annotations:
+      summary: "High connection count on {{ $labels.datname }}"
+      description: "Database {{ $labels.datname }} has {{ $value | humanizePercentage }} of max connections"
+
+  - alert: PostgresMaxConnections
+    expr: pg_stat_activity_count{datname!~"template.*|postgres"} / pg_settings_max_connections * 100 > 90
+    for: 2m
+    labels:
+      severity: critical
+      category: connections
+    annotations:
+      summary: "CRITICAL: Near max connections on {{ $labels.datname }}"
+      description: "Database {{ $labels.datname }} has {{ $value | humanizePercentage }} of max connections"
+
+  - alert: PostgresDatabaseGrowingFast
+    expr: rate(pg_database_size_bytes[1h]) > 1073741824  # 1GB per hour
+    for: 10m
+    labels:
+      severity: warning
+      category: disk
+    annotations:
+      summary: "Database growing too fast - {{ $labels.datname }}"
+      description: "Database {{ $labels.datname }} is growing at {{ $value | humanize }} bytes per hour"
+
+  - alert: PostgresDatabaseNearCapacity
+    expr: pg_database_size_bytes / (pg_settings_data_directory_bytes) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+      category: disk
+    annotations:
+      summary: "Database near disk capacity - {{ $labels.datname }}"
+      description: "Database {{ $labels.datname }} uses {{ $value | humanizePercentage }} of available disk"
+
+
+# AIRFLOW
+  - alert: AirflowSchedulerDown
+    expr: time() - airflow_scheduler_heartbeat > 120
+    for: 2m
+    labels:
+      severity: critical
+      category: scheduler
+    annotations:
+      summary: "Airflow Scheduler is down"
+      description: "Scheduler heartbeat missing for more than 2 minutes on {{ $labels.instance }}"
+      
+  - alert: AirflowSchedulerUnhealthy
+    expr: airflow_scheduler_heartbeat > 60
+    for: 5m
+    labels:
+      severity: warning
+      category: scheduler
+    annotations:
+      summary: "Airflow Scheduler heartbeat delayed"
+      description: "Scheduler heartbeat is {{ $value }} seconds old on {{ $labels.instance }}"
+  - alert: AirflowCriticalQueuedTasks
+    expr: airflow_executor_queued_tasks > 50
+    for: 5m
+    labels:
+      severity: critical
+      category: queue
+    annotations:
+      summary: "CRITICAL: Too many queued tasks"
+      description: "There are {{ $value }} tasks queued in Airflow"

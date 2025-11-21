@@ -10,7 +10,7 @@ alerting:
         - targets: ['alertmanager:9093']
 
 rule_files:
-  - "rules/alerts.yml"
+  - "alerts.yml"
 
 scrape_configs:
   - job_name: 'node'
@@ -22,3 +22,6 @@ scrape_configs:
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080'] 
