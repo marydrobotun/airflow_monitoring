@@ -1,0 +1,22 @@
+filebeat.inputs:
+- type: container
+  paths:
+    - '/var/lib/docker/containers/*/*.log'
+  processors:
+    - add_docker_metadata: ~
+- type: redis
+  hosts: ["redis:6379"]
+  password: ""
+  fields:
+    service: redis
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+  indices:
+    - index: "filebeat-redis"
+      when.equals:
+        service: "redis"
+
+setup.template.enabled: false
+setup.ilm.enabled: false

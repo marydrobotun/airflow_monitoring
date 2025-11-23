@@ -61,13 +61,20 @@ x-airflow-common:
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'True'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'True'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
-    AIRFLOW__METRICS__STATSD_ON: 'true'
+    AIRFLOW__METRICS__STATSD_ON: 'True'
     AIRFLOW__METRICS__STATSD_HOST: statsd-exporter
     AIRFLOW__METRICS__STATSD_PORT: 9125
     AIRFLOW__METRICS__STATSD_PREFIX: airflow
+    AIRFLOW__LOGGING__REMOTE_LOGGING: 'True'
+    AIRFLOW__ELASTICSEARCH__WRITE_STDOUT: 'False'
+    AIRFLOW__ELASTICSEARCH__WRITE_TO_ES: 'True'
+    AIRFLOW__ELASTICSEARCH__HOST: 'elasticsearch:9200'
+    AIRFLOW__ELASTICSEARCH__ENDPOINT_PREFIX: ''
+    AIRFLOW__ELASTICSEARCH__WRITE_INDEX: 'airflow-logs'
+    AIRFLOW__ELASTICSEARCH__JSON_FORMAT: 'True'
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
@@ -148,6 +155,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    environment:
+      <<: *airflow-common-env
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -163,6 +172,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    environment:
+      <<: *airflow-common-env
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -203,6 +214,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    environment:
+      <<: *airflow-common-env
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -298,6 +311,8 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
+
+
     user: "0:0"
 
   airflow-cli:
@@ -422,8 +437,49 @@ services:
     depends_on:
       - prometheus
     restart: unless-stopped
+  
+  elasticsearch:
+    image: elasticsearch:9.2.1
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: kibana:9.2.1
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
+
+  logstash:
+    image: logstash:9.2.1
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+  
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/var/log/services:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
 
 volumes:
   postgres-db-volume:
   grafana-storage:
   alertmanager_data:
+  es-data:
